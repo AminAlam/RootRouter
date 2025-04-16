@@ -55,3 +55,9 @@ if __name__ == '__main__':
     # Run app with SSL context (use your own cert.pem and key.pem files)
     # app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'))
     app.run(host='0.0.0.0', port=8080)
+
+def run():
+    """Entry point for the application script"""
+    with app.app_context():
+        db.create_all()
+    app.run(host='0.0.0.0', port=8080)
