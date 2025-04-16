@@ -1,56 +1,321 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Plant Moisture Data</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RootRouter - Plant Moisture Monitor</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        table {
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+        .container {
+            max-width: 1200px;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            background-color: white;
+        }
+        .card-header {
+            background-color: #198754;
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 15px 20px;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .chart-container {
+            height: 400px;
             width: 100%;
-            border-collapse: collapse;
         }
-        th, td {
-            border: 1px solid black;
+        .plant-selector {
+            margin-bottom: 20px;
         }
-        .very-wet {
-            background-color: #00FF00; /* Green */
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
         }
-        .wet {
-            background-color: #FFFF00; /* Yellow */
+        .moisture-badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: bold;
         }
-        .dry {
-            background-color: #FFA500; /* Orange */
+        .badge-very-wet {
+            background-color: #0dcaf0;
+            color: #343a40;
         }
-        .unknown {
-            background-color: #FF0000; /* Red */
+        .badge-wet {
+            background-color: #20c997;
+            color: white;
+        }
+        .badge-dry {
+            background-color: #fd7e14;
+            color: white;
+        }
+        .badge-unknown {
+            background-color: #dc3545;
+            color: white;
+        }
+        .header-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        .dashboard-header {
+            margin-bottom: 30px;
+        }
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #e9ecef;
+        }
+        .github-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .github-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 <body>
-    <h1>Plant Moisture Data</h1>
-    <table>
-        <tr>
-            <th>Plant Name</th>
-            <th>Location</th>
-            <th>Moisture Value</th>
-            <th>Timestamp</th>
-        </tr>
-        {% for data in plant_data %}
-            {% set moisture_class = '' %}
-            {% if data.moisture_value > 260 and data.moisture_value < 260 + ((520 - 260)/3) %}
-                {% set moisture_class = 'very-wet' %}
-            {% elif data.moisture_value >= 260 + ((520 - 260)/3) and data.moisture_value <= 520 - ((520 - 260)/3) %}
-                {% set moisture_class = 'wet' %}
-            {% elif data.moisture_value > 520 - ((520 - 260)/3) and data.moisture_value <= 520 %}
-                {% set moisture_class = 'dry' %}
-            {% else %}
-                {% set moisture_class = 'unknown' %}
-            {% endif %}
-        <tr class="{{ moisture_class }}">
-            <td>{{ data.plant_name }}</td>
-            <td>{{ data.location }}</td>
-            <td>{{ data.moisture_value }}</td>
-            <td>{{ data.timestamp }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+    <div class="container">
+        <div class="dashboard-header text-center py-4">
+            <h1><span class="text-success">🌱</span> RootRouter Dashboard</h1>
+            <p class="text-muted">Monitor and track soil moisture levels for your plants</p>
+            <p><a href="https://github.com/AminAlam/RootRouter" target="_blank" class="btn btn-outline-success btn-sm github-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+                </svg>
+                GitHub Project
+            </a></p>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><span class="header-icon">📊</span> Moisture Chart</h5>
+                        <div class="plant-selector">
+                            <select id="plantSelect" class="form-select">
+                                <option value="all">All Plants</option>
+                                {% set plant_names = [] %}
+                                {% for data in plant_data %}
+                                    {% if data.plant_name not in plant_names %}
+                                        {% set _ = plant_names.append(data.plant_name) %}
+                                        <option value="{{ data.plant_name }}">{{ data.plant_name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="moistureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><span class="header-icon">📋</span> Moisture Data Log</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table id="dataTable" class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Plant Name</th>
+                                        <th>Location</th>
+                                        <th>Moisture Value</th>
+                                        <th>Status</th>
+                                        <th>Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for data in plant_data %}
+                                    <tr data-plant="{{ data.plant_name }}">
+                                        <td>{{ data.plant_name }}</td>
+                                        <td>{{ data.location }}</td>
+                                        <td>{{ data.moisture_value }}</td>
+                                        <td>
+                                            {% set moisture_class = '' %}
+                                            {% set moisture_text = '' %}
+                                            {% if data.moisture_value > 260 and data.moisture_value < 260 + ((520 - 260)/3) %}
+                                                {% set moisture_class = 'very-wet' %}
+                                                {% set moisture_text = 'Very Wet' %}
+                                            {% elif data.moisture_value >= 260 + ((520 - 260)/3) and data.moisture_value <= 520 - ((520 - 260)/3) %}
+                                                {% set moisture_class = 'wet' %}
+                                                {% set moisture_text = 'Wet' %}
+                                            {% elif data.moisture_value > 520 - ((520 - 260)/3) and data.moisture_value <= 520 %}
+                                                {% set moisture_class = 'dry' %}
+                                                {% set moisture_text = 'Dry' %}
+                                            {% else %}
+                                                {% set moisture_class = 'unknown' %}
+                                                {% set moisture_text = 'Unknown' %}
+                                            {% endif %}
+                                            <span class="moisture-badge badge-{{ moisture_class }}">{{ moisture_text }}</span>
+                                        </td>
+                                        <td>{{ data.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <p class="text-muted mb-0">
+                <small>RootRouter &copy; 2025 | <a href="https://github.com/AminAlam/RootRouter" target="_blank">GitHub</a></small>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    //<![CDATA[
+        // Prepare data for chart
+        const plantData = [
+            {% for data in plant_data %}
+            {
+                plant: "{{ data.plant_name }}",
+                timestamp: "{{ data.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}",
+                moisture: {{ data.moisture_value }},
+                location: "{{ data.location }}"
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // Sort data by timestamp
+        plantData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Initialize Chart
+        const ctx = document.getElementById('moistureChart').getContext('2d');
+        let moistureChart;
+
+        function initChart(filterPlant = 'all') {
+            const filteredData = filterPlant === 'all' 
+                ? plantData 
+                : plantData.filter(item => item.plant === filterPlant);
+            
+            const labels = filteredData.map(item => item.timestamp);
+            const data = filteredData.map(item => item.moisture);
+            
+            // Destroy previous chart if exists
+            if (moistureChart) {
+                moistureChart.destroy();
+            }
+            
+            // Create new chart
+            moistureChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: filterPlant === 'all' ? 'All Plants' : filterPlant,
+                        data: data,
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#198754',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Soil Moisture Over Time',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    const dataPoint = filteredData[context.dataIndex];
+                                    return `Location: ${dataPoint.location}`;
+                                }
+                            }
+                        },
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Moisture Value'
+                            },
+                            suggestedMin: 250,
+                            suggestedMax: 530
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Filter table rows based on plant selection
+        function filterTable(plant) {
+            const rows = document.querySelectorAll('#dataTable tbody tr');
+            rows.forEach(row => {
+                if (plant === 'all' || row.getAttribute('data-plant') === plant) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize the chart on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize chart with all plants
+            initChart();
+            
+            // Add event listener for plant selector
+            document.getElementById('plantSelect').addEventListener('change', function() {
+                const selectedPlant = this.value;
+                initChart(selectedPlant);
+                filterTable(selectedPlant);
+            });
+        });
+    //]]>
+    </script>
 </body>
 </html>
