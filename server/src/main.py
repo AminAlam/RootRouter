@@ -49,7 +49,9 @@ def index():
     return render_template('index.html', plant_data=plant_data)
 
 if __name__ == '__main__':
-    # Create database tables
-    db.create_all()
+    # Create database tables within an application context
+    with app.app_context():
+        db.create_all()
     # Run app with SSL context (use your own cert.pem and key.pem files)
-    app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'))
+    # app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'))
+    app.run(host='0.0.0.0', port=8080)

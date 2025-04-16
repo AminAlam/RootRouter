@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Moisture Data</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+        }
+        .very-wet {
+            background-color: #00FF00; /* Green */
+        }
+        .wet {
+            background-color: #FFFF00; /* Yellow */
+        }
+        .dry {
+            background-color: #FFA500; /* Orange */
+        }
+        .unknown {
+            background-color: #FF0000; /* Red */
+        }
+    </style>
+</head>
+<body>
+    <h1>Plant Moisture Data</h1>
+    <table>
+        <tr>
+            <th>Plant Name</th>
+            <th>Location</th>
+            <th>Moisture Value</th>
+            <th>Timestamp</th>
+        </tr>
+        {% for data in plant_data %}
+            {% set moisture_class = '' %}
+            {% if data.moisture_value > 260 and data.moisture_value < 260 + ((520 - 260)/3) %}
+                {% set moisture_class = 'very-wet' %}
+            {% elif data.moisture_value >= 260 + ((520 - 260)/3) and data.moisture_value <= 520 - ((520 - 260)/3) %}
+                {% set moisture_class = 'wet' %}
+            {% elif data.moisture_value > 520 - ((520 - 260)/3) and data.moisture_value <= 520 %}
+                {% set moisture_class = 'dry' %}
+            {% else %}
+                {% set moisture_class = 'unknown' %}
+            {% endif %}
+        <tr class="{{ moisture_class }}">
+            <td>{{ data.plant_name }}</td>
+            <td>{{ data.location }}</td>
+            <td>{{ data.moisture_value }}</td>
+            <td>{{ data.timestamp }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
