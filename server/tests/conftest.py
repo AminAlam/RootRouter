@@ -1,4 +1,3 @@
-from main import app, db, PlantData
 import os
 import sys
 import pytest
@@ -8,6 +7,8 @@ import tempfile
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "src")))
 
+# Now import after path is set
+from main import app, db, PlantData
 
 @pytest.fixture
 def client():
