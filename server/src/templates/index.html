@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Date Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -49,6 +51,13 @@
             border-radius: 20px;
             font-weight: bold;
         }
+        /* Legend badges */
+        .legend .moisture-badge {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+        }
         .badge-very-wet {
             background-color: #0dcaf0;
             color: #343a40;
@@ -56,6 +65,10 @@
         .badge-wet {
             background-color: #20c997;
             color: white;
+        }
+        .badge-not-so-wet {
+            background-color: #ffc107;
+            color: #343a40;
         }
         .badge-dry {
             background-color: #fd7e14;
@@ -85,6 +98,81 @@
         .github-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        /* Status Grid Styles */
+        .status-grid-container {
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: 150px repeat(var(--column-count), 30px);
+            grid-auto-rows: 30px;
+            grid-gap: 1px;
+            font-size: 12px;
+        }
+        .status-grid-header {
+            display: contents;
+        }
+        .status-grid-header-cell {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            padding: 5px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #dee2e6;
+            z-index: 1;
+        }
+        .status-grid-header-cell:first-child {
+            text-align: left;
+            padding-left: 10px;
+        }
+        .status-grid-row {
+            display: contents;
+        }
+        .status-grid-plant-name {
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            font-weight: 500;
+            background-color: #f8f9fa;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+        }
+        .status-grid-cell {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            border: 1px solid #fff;
+        }
+        .status-grid-cell:hover {
+            transform: scale(1.5);
+            z-index: 2;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+        .date-label {
+            grid-column: span 24;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 5px;
+            background-color: #f8f9fa;
+            padding: 2px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .time-tooltip {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            display: none;
+            pointer-events: none;
+            max-width: 200px;
         }
     </style>
 </head>
@@ -120,6 +208,31 @@
                         </div>
                     </div>
                     <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="timeRange" class="form-label">Time Range:</label>
+                                <div class="input-group">
+                                    <select id="timeRange" class="form-select">
+                                        <option value="14" selected>Last 2 Weeks</option>
+                                        <option value="7">Last Week</option>
+                                        <option value="30">Last Month</option>
+                                        <option value="90">Last 3 Months</option>
+                                        <option value="all">All Time</option>
+                                    </select>
+                                    <button id="applyServerFilter" class="btn btn-success">Apply Server Filter</button>
+                                </div>
+                                <small class="form-text text-muted">Use "Apply Server Filter" for large datasets</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="timeResolution" class="form-label">Time Resolution:</label>
+                                <select id="timeResolution" class="form-select">
+                                    <option value="raw">All Data Points</option>
+                                    <option value="hourly">Hourly Average</option>
+                                    <option value="daily" selected>Daily Average</option>
+                                    <option value="weekly">Weekly Average</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="chart-container">
                             <canvas id="moistureChart"></canvas>
                         </div>
@@ -131,50 +244,44 @@
         <div class="row">
             <div class="col-lg-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><span class="header-icon">📋</span> Moisture Data Log</h5>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><span class="header-icon">📋</span> Moisture Status Timeline</h5>
+                        <div>
+                            <select id="timelineRange" class="form-select form-select-sm" style="width: auto; display: inline-block; margin-right: 10px;">
+                                <option value="7">Last Week</option>
+                                <option value="14" selected>Last 2 Weeks</option>
+                                <option value="30">Last Month</option>
+                            </select>
+                            <select id="timelineResolution" class="form-select form-select-sm" style="width: auto; display: inline-block;">
+                                <option value="hourly">Hourly</option>
+                                <option value="daily" selected>Daily</option>
+                                <option value="weekly">Weekly</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="table-container">
-                            <table id="dataTable" class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Plant Name</th>
-                                        <th>Location</th>
-                                        <th>Moisture Value</th>
-                                        <th>Status</th>
-                                        <th>Timestamp</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for data in plant_data %}
-                                    <tr data-plant="{{ data.plant_name }}">
-                                        <td>{{ data.plant_name }}</td>
-                                        <td>{{ data.location }}</td>
-                                        <td>{{ data.moisture_value }}</td>
-                                        <td>
-                                            {% set moisture_class = '' %}
-                                            {% set moisture_text = '' %}
-                                            {% if data.moisture_value > 260 and data.moisture_value < 260 + ((520 - 260)/3) %}
-                                                {% set moisture_class = 'very-wet' %}
-                                                {% set moisture_text = 'Very Wet' %}
-                                            {% elif data.moisture_value >= 260 + ((520 - 260)/3) and data.moisture_value <= 520 - ((520 - 260)/3) %}
-                                                {% set moisture_class = 'wet' %}
-                                                {% set moisture_text = 'Wet' %}
-                                            {% elif data.moisture_value > 520 - ((520 - 260)/3) and data.moisture_value <= 520 %}
-                                                {% set moisture_class = 'dry' %}
-                                                {% set moisture_text = 'Dry' %}
-                                            {% else %}
-                                                {% set moisture_class = 'unknown' %}
-                                                {% set moisture_text = 'Unknown' %}
-                                            {% endif %}
-                                            <span class="moisture-badge badge-{{ moisture_class }}">{{ moisture_text }}</span>
-                                        </td>
-                                        <td>{{ data.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                        <div id="statusGrid" class="status-grid-container mb-3">
+                            <!-- Status grid will be generated here -->
+                        </div>
+                        <div class="mt-3 legend">
+                            <div class="d-flex justify-content-center flex-wrap">
+                                <div class="mx-3 d-flex align-items-center">
+                                    <span class="moisture-badge badge-very-wet me-2"></span>
+                                    <span>Very Wet</span>
+                                </div>
+                                <div class="mx-3 d-flex align-items-center">
+                                    <span class="moisture-badge badge-wet me-2"></span>
+                                    <span>Wet</span>
+                                </div>
+                                <div class="mx-3 d-flex align-items-center">
+                                    <span class="moisture-badge badge-not-so-wet me-2"></span>
+                                    <span>Not So Wet</span>
+                                </div>
+                                <div class="mx-3 d-flex align-items-center">
+                                    <span class="moisture-badge badge-dry me-2"></span>
+                                    <span>Dry</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -194,7 +301,6 @@
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    //<![CDATA[
         // Prepare data for chart
         const plantData = [
             {% for data in plant_data %}
@@ -202,7 +308,8 @@
                 plant: "{{ data.plant_name }}",
                 timestamp: "{{ data.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}",
                 moisture: {{ data.moisture_value }},
-                location: "{{ data.location }}"
+                location: "{{ data.location }}",
+                status: "{{ data.moisture_status.text }}"
             }{% if not loop.last %},{% endif %}
             {% endfor %}
         ];
@@ -214,17 +321,121 @@
         const ctx = document.getElementById('moistureChart').getContext('2d');
         let moistureChart;
 
-        function initChart(filterPlant = 'all') {
-            const filteredData = filterPlant === 'all' 
+        // Filter data by time range
+        function filterDataByTimeRange(data, days) {
+            if (days === 'all') return data;
+            
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+            
+            return data.filter(item => new Date(item.timestamp) >= cutoffDate);
+        }
+        
+        // Apply time resolution (aggregation)
+        function applyTimeResolution(data, resolution) {
+            if (resolution === 'raw') return data;
+            if (data.length === 0) return data;
+            
+            const aggregatedData = {};
+            
+            data.forEach(item => {
+                const date = new Date(item.timestamp);
+                let key;
+                
+                switch(resolution) {
+                    case 'hourly':
+                        key = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:00`;
+                        break;
+                    case 'daily':
+                        key = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+                        break;
+                    case 'weekly':
+                        // Get the first day of the week (Sunday)
+                        const firstDay = new Date(date);
+                        const day = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                        firstDay.setDate(date.getDate() - day); // Set to previous Sunday
+                        // Format: YYYY-MM-DD for consistent date handling
+                        key = `${firstDay.getFullYear()}-${(firstDay.getMonth()+1).toString().padStart(2, '0')}-${firstDay.getDate().toString().padStart(2, '0')}`;
+                        break;
+                    default:
+                        key = item.timestamp;
+                        break;
+                }
+                
+                if (!aggregatedData[key]) {
+                    aggregatedData[key] = {
+                        sum: item.moisture,
+                        count: 1,
+                        plant: item.plant,
+                        location: item.location,
+                        status: item.status,
+                        timestamp: resolution === 'weekly' ? new Date(key) : key // Store actual Date object for weekly
+                    };
+                } else {
+                    aggregatedData[key].sum += item.moisture;
+                    aggregatedData[key].count += 1;
+                    // No need to aggregate status - we'll keep the first one
+                }
+            });
+            
+            // Convert the aggregated data back to array format
+            return Object.keys(aggregatedData).map(key => {
+                const entry = aggregatedData[key];
+                return {
+                    plant: data[0].plant,
+                    timestamp: entry.timestamp || key, // Use stored date for weekly or key otherwise
+                    moisture: Math.round(entry.sum / entry.count),
+                    location: data[0].location,
+                    status: entry.status
+                };
+            }).sort((a, b) => {
+                // Ensure proper date sorting
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                return dateA - dateB;
+            });
+        }
+
+        function initChart(filterPlant = 'all', timeRange = '14', resolution = 'daily') {
+            let filteredData = filterPlant === 'all' 
                 ? plantData 
                 : plantData.filter(item => item.plant === filterPlant);
             
+            // Apply time range filter
+            filteredData = filterDataByTimeRange(filteredData, timeRange);
+            
+            // Apply time resolution
+            filteredData = applyTimeResolution(filteredData, resolution);
+            
+            // For debugging
+            console.log(`Processed ${filteredData.length} data points with resolution: ${resolution}`);
+            if (filteredData.length > 0) {
+                console.log("Sample data point:", filteredData[0]);
+            }
+            
+            // Use the timestamp property for labels
             const labels = filteredData.map(item => item.timestamp);
+            // Use the moisture property for data values
             const data = filteredData.map(item => item.moisture);
             
             // Destroy previous chart if exists
             if (moistureChart) {
                 moistureChart.destroy();
+            }
+            
+            // Determine appropriate time unit based on resolution
+            let timeUnit = 'day';
+            let tooltipFormat = 'PPP';
+            let pointRadius = 4;
+            
+            if (resolution === 'hourly') {
+                timeUnit = 'hour';
+                // For hourly data, smaller points as there will be more
+                pointRadius = 3;
+            } else if (resolution === 'weekly') {
+                timeUnit = 'week';
+                // For weekly data, larger points as there will be fewer
+                pointRadius = 6;
             }
             
             // Create new chart
@@ -241,8 +452,8 @@
                         tension: 0.4,
                         fill: true,
                         pointBackgroundColor: '#198754',
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        pointRadius: pointRadius,
+                        pointHoverRadius: pointRadius + 2
                     }]
                 },
                 options: {
@@ -251,7 +462,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Soil Moisture Over Time',
+                            text: `Soil Moisture Over Time (${resolution.charAt(0).toUpperCase() + resolution.slice(1)} Resolution)`,
                             font: {
                                 size: 16
                             }
@@ -260,9 +471,14 @@
                             mode: 'index',
                             intersect: false,
                             callbacks: {
+                                title: function(context) {
+                                    // Use our helper function to format the timestamp nicely
+                                    const timestamp = context[0].label;
+                                    return formatTimeLabel(timestamp, resolution);
+                                },
                                 afterLabel: function(context) {
                                     const dataPoint = filteredData[context.dataIndex];
-                                    return `Location: ${dataPoint.location}`;
+                                    return [`Location: ${dataPoint.location}`, `Status: ${dataPoint.status}`];
                                 }
                             }
                         },
@@ -281,6 +497,16 @@
                             suggestedMax: 530
                         },
                         x: {
+                            type: 'time',
+                            time: {
+                                unit: timeUnit,
+                                tooltipFormat: tooltipFormat,
+                                displayFormats: {
+                                    hour: 'HH:mm - MMM d',
+                                    day: 'MMM d',
+                                    week: 'MMM d, yyyy'
+                                }
+                            },
                             title: {
                                 display: true,
                                 text: 'Time'
@@ -303,19 +529,445 @@
             });
         }
 
-        // Initialize the chart on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize chart with all plants
-            initChart();
+        // Status Grid Visualization
+        let timeoutId;
+        const tooltip = document.createElement('div');
+        tooltip.className = 'time-tooltip';
+        document.body.appendChild(tooltip);
+        
+        function updateStatusGrid(filterPlant = 'all', timeRange = '14', resolution = 'daily') {
+            // Get status color mappings
+            const statusColors = {
+                'Very Wet': '#0dcaf0',    // Light blue
+                'Wet': '#20c997',         // Teal green
+                'Not So Wet': '#ffc107',  // Yellow
+                'Dry': '#fd7e14'          // Orange
+            };
             
-            // Add event listener for plant selector
+            // Filter data by plant and time range
+            let filteredData = filterPlant === 'all' 
+                ? plantData 
+                : plantData.filter(item => item.plant === filterPlant);
+            
+            // Get days in our time range
+            const days = parseInt(timeRange);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - days);
+            cutoffDate.setHours(0, 0, 0, 0); // Start at beginning of the day
+            
+            // Filter by date
+            filteredData = filteredData.filter(item => new Date(item.timestamp) >= cutoffDate);
+            
+            // Group by plant
+            const plantGroups = {};
+            
+            filteredData.forEach(item => {
+                if (!plantGroups[item.plant]) {
+                    plantGroups[item.plant] = [];
+                }
+                plantGroups[item.plant].push({
+                    timestamp: new Date(item.timestamp),
+                    moisture: parseInt(item.moisture),
+                    status: item.status,
+                    location: item.location
+                });
+            });
+            
+            // Sort plant names alphabetically
+            const plantNames = Object.keys(plantGroups).sort();
+            
+            // Create time slots based on resolution
+            const timeSlots = [];
+            const endDate = new Date();
+            endDate.setHours(23, 59, 59, 999); // End at end of today
+            let currentDate = new Date(cutoffDate);
+            
+            // Adjust time slots based on resolution
+            switch(resolution) {
+                case 'hourly':
+                    // For hourly, create a slot for each hour
+                    while (currentDate <= endDate) {
+                        timeSlots.push(new Date(currentDate));
+                        currentDate.setHours(currentDate.getHours() + 1);
+                    }
+                    break;
+                    
+                case 'weekly':
+                    // For weekly, create a slot for each Sunday
+                    // Adjust to previous Sunday if not already
+                    const dayOfWeek = currentDate.getDay();
+                    if (dayOfWeek !== 0) {
+                        currentDate.setDate(currentDate.getDate() - dayOfWeek);
+                    }
+                    
+                    while (currentDate <= endDate) {
+                        timeSlots.push(new Date(currentDate));
+                        currentDate.setDate(currentDate.getDate() + 7);
+                    }
+                    break;
+                    
+                case 'daily':
+                default:
+                    // For daily (default), create a slot for each day
+                    while (currentDate <= endDate) {
+                        timeSlots.push(new Date(currentDate));
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                    break;
+            }
+            
+            // Create the grid container
+            const statusGridContainer = document.getElementById('statusGrid');
+            statusGridContainer.innerHTML = '';
+            
+            // Add resolution class for styling
+            statusGridContainer.className = 'status-grid-container mb-3 resolution-' + resolution;
+            
+            // Set CSS variable for the grid columns count
+            document.documentElement.style.setProperty('--column-count', timeSlots.length);
+            
+            // Create the grid
+            const grid = document.createElement('div');
+            grid.className = 'status-grid';
+            
+            // Create header row
+            const header = document.createElement('div');
+            header.className = 'status-grid-header';
+            
+            // Add plant name column header
+            const plantHeaderCell = document.createElement('div');
+            plantHeaderCell.className = 'status-grid-header-cell';
+            plantHeaderCell.textContent = 'Plant';
+            header.appendChild(plantHeaderCell);
+            
+            // Add time headers based on resolution
+            timeSlots.forEach((timeSlot) => {
+                const dateHeaderCell = document.createElement('div');
+                dateHeaderCell.className = 'status-grid-header-cell';
+                
+                // Format header text based on resolution
+                switch(resolution) {
+                    case 'hourly':
+                        // For hourly: show hour (24h format)
+                        dateHeaderCell.textContent = timeSlot.getHours().toString().padStart(2, '0');
+                        break;
+                    case 'weekly':
+                        // For weekly: show start date of week
+                        dateHeaderCell.textContent = timeSlot.getDate().toString();
+                        break;
+                    case 'daily':
+                    default:
+                        // For daily: show day number
+                        dateHeaderCell.textContent = timeSlot.getDate().toString();
+                        break;
+                }
+                
+                header.appendChild(dateHeaderCell);
+            });
+            
+            grid.appendChild(header);
+            
+            // Add appropriate time period labels (month/year, or dates for weekly)
+            let currentPeriod = '';
+            let periodSpan = 0;
+            let periodLabels = [];
+            
+            timeSlots.forEach((timeSlot, idx) => {
+                let periodLabel;
+                
+                // Get period label based on resolution
+                switch(resolution) {
+                    case 'hourly':
+                        // For hourly: group by day
+                        periodLabel = timeSlot.toLocaleDateString();
+                        break;
+                    case 'weekly':
+                        // For weekly: group by month
+                        periodLabel = timeSlot.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+                        break;
+                    case 'daily':
+                    default:
+                        // For daily: group by month
+                        periodLabel = timeSlot.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+                        break;
+                }
+                
+                if (periodLabel !== currentPeriod) {
+                    if (currentPeriod) {
+                        periodLabels.push({
+                            label: currentPeriod,
+                            span: periodSpan,
+                            startIndex: idx - periodSpan
+                        });
+                    }
+                    currentPeriod = periodLabel;
+                    periodSpan = 1;
+                } else {
+                    periodSpan++;
+                }
+                
+                // Last item
+                if (idx === timeSlots.length - 1) {
+                    periodLabels.push({
+                        label: currentPeriod,
+                        span: periodSpan,
+                        startIndex: idx - periodSpan + 1
+                    });
+                }
+            });
+            
+            // Add period labels
+            periodLabels.forEach(periodInfo => {
+                const periodLabel = document.createElement('div');
+                periodLabel.className = 'date-label';
+                periodLabel.textContent = periodInfo.label;
+                periodLabel.style.gridColumn = `${periodInfo.startIndex + 2} / span ${periodInfo.span}`;
+                periodLabel.style.gridRow = `${plantNames.length + 2}`;
+                grid.appendChild(periodLabel);
+            });
+            
+            // Create rows for each plant
+            plantNames.forEach((plantName, rowIndex) => {
+                const plantData = plantGroups[plantName];
+                
+                const row = document.createElement('div');
+                row.className = 'status-grid-row';
+                
+                // Plant name cell
+                const plantNameCell = document.createElement('div');
+                plantNameCell.className = 'status-grid-plant-name';
+                plantNameCell.textContent = plantName;
+                row.appendChild(plantNameCell);
+                
+                // Create cells for each time slot
+                timeSlots.forEach(timeSlot => {
+                    // Calculate the time period for this slot
+                    let periodStart, periodEnd;
+                    
+                    switch(resolution) {
+                        case 'hourly':
+                            // For hourly: one-hour period
+                            periodStart = new Date(timeSlot);
+                            periodEnd = new Date(timeSlot);
+                            periodEnd.setHours(periodEnd.getHours() + 1);
+                            break;
+                        case 'weekly':
+                            // For weekly: one-week period
+                            periodStart = new Date(timeSlot);
+                            periodEnd = new Date(timeSlot);
+                            periodEnd.setDate(periodEnd.getDate() + 7);
+                            break;
+                        case 'daily':
+                        default:
+                            // For daily: one-day period
+                            periodStart = new Date(timeSlot);
+                            periodEnd = new Date(timeSlot);
+                            periodEnd.setHours(23, 59, 59, 999);
+                            break;
+                    }
+                    
+                    // Get all data points for this period
+                    const periodData = plantData.filter(point => 
+                        point.timestamp >= periodStart && point.timestamp < periodEnd);
+                    
+                    const cell = document.createElement('div');
+                    cell.className = 'status-grid-cell';
+                    
+                    if (periodData.length > 0) {
+                        // Find the most common status for the period
+                        const statusCounts = {};
+                        periodData.forEach(point => {
+                            statusCounts[point.status] = (statusCounts[point.status] || 0) + 1;
+                        });
+                        
+                        const dominantStatus = Object.keys(statusCounts).reduce((a, b) => 
+                            statusCounts[a] > statusCounts[b] ? a : b);
+                        
+                        // Average moisture for the period
+                        const avgMoisture = Math.round(
+                            periodData.reduce((sum, point) => sum + point.moisture, 0) / periodData.length
+                        );
+                        
+                        cell.style.backgroundColor = statusColors[dominantStatus] || '#dc3545';
+                        
+                        // Add tooltip data
+                        cell.dataset.plant = plantName;
+                        
+                        // Format time display based on resolution
+                        let timeDisplay;
+                        switch(resolution) {
+                            case 'hourly':
+                                timeDisplay = timeSlot.toLocaleString();
+                                break;
+                            case 'weekly':
+                                timeDisplay = `Week of ${timeSlot.toLocaleDateString()}`;
+                                break;
+                            case 'daily':
+                            default:
+                                timeDisplay = timeSlot.toLocaleDateString(undefined, { 
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long', 
+                                    day: 'numeric'
+                                });
+                                break;
+                        }
+                        
+                        cell.dataset.timestamp = timeDisplay;
+                        cell.dataset.moisture = avgMoisture;
+                        cell.dataset.status = dominantStatus;
+                        cell.dataset.location = periodData[0].location;
+                        cell.dataset.readings = periodData.length;
+                        
+                        // Add tooltip event
+                        cell.addEventListener('mouseover', showTooltip);
+                        cell.addEventListener('mouseout', hideTooltip);
+                        cell.addEventListener('mousemove', moveTooltip);
+                    } else {
+                        cell.style.backgroundColor = '#e9ecef'; // Light gray for no data
+                    }
+                    
+                    row.appendChild(cell);
+                });
+                
+                grid.appendChild(row);
+            });
+            
+            statusGridContainer.appendChild(grid);
+        }
+        
+        // Tooltip handlers
+        function showTooltip(e) {
+            if (this.dataset.plant) {
+                tooltip.innerHTML = `
+                    <strong>${this.dataset.plant}</strong><br>
+                    <strong>Date:</strong> ${this.dataset.timestamp}<br>
+                    <strong>Status:</strong> ${this.dataset.status}<br>
+                    <strong>Avg Moisture:</strong> ${this.dataset.moisture}<br>
+                    <strong>Location:</strong> ${this.dataset.location}<br>
+                    <strong>Readings:</strong> ${this.dataset.readings || 'N/A'}
+                `;
+                tooltip.style.display = 'block';
+                moveTooltip(e);
+            }
+        }
+        
+        function hideTooltip() {
+            tooltip.style.display = 'none';
+        }
+        
+        function moveTooltip(e) {
+            // Position tooltip near mouse but not directly under it
+            const x = e.pageX + 10;
+            const y = e.pageY + 10;
+            
+            // Keep tooltip within viewport
+            const tooltipWidth = tooltip.offsetWidth;
+            const tooltipHeight = tooltip.offsetHeight;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            const tooltipX = x + tooltipWidth > windowWidth ? x - tooltipWidth - 20 : x;
+            const tooltipY = y + tooltipHeight > windowHeight ? y - tooltipHeight - 20 : y;
+            
+            tooltip.style.left = `${tooltipX}px`;
+            tooltip.style.top = `${tooltipY}px`;
+        }
+        
+        // Function to update chart with current settings
+        function updateChart() {
+            const selectedPlant = document.getElementById('plantSelect').value;
+            const selectedTimeRange = document.getElementById('timeRange').value;
+            const selectedResolution = document.getElementById('timeResolution').value;
+            
+            console.log(`Updating chart with: Plant=${selectedPlant}, Range=${selectedTimeRange}, Resolution=${selectedResolution}`);
+            
+            // Only update the moisture chart - no effect on timeline
+            initChart(selectedPlant, selectedTimeRange, selectedResolution);
+        }
+        
+        // Add this helper function to get formatted label for display
+        function formatTimeLabel(timestamp, resolution) {
+            const date = new Date(timestamp);
+            
+            switch(resolution) {
+                case 'hourly':
+                    return date.toLocaleString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                case 'weekly':
+                    return `Week of ${date.toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    })}`;
+                case 'daily':
+                default:
+                    return date.toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+            }
+        }
+        
+        // Separate function for updating the status timeline only
+        function updateStatusTimeline() {
+            const selectedPlant = document.getElementById('plantSelect').value;
+            const selectedTimelineRange = document.getElementById('timelineRange').value;
+            const selectedTimelineResolution = document.getElementById('timelineResolution').value;
+            
+            // Only update the status grid - no effect on moisture chart
+            updateStatusGrid(selectedPlant, selectedTimelineRange, selectedTimelineResolution);
+        }
+        
+        // Add event listener for server-side filtering
+        document.getElementById('applyServerFilter').addEventListener('click', function(e) {
+            e.preventDefault();
+            const selectedTimeRange = document.getElementById('timeRange').value;
+            window.location.href = `/?time_range=${selectedTimeRange}`;
+        });
+        
+        // Initialize charts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize chart with default settings
+            const defaultTimeRange = document.getElementById('timeRange').value;
+            const defaultResolution = document.getElementById('timeResolution').value;
+            const defaultPlant = document.getElementById('plantSelect').value;
+            const defaultTimelineRange = document.getElementById('timelineRange').value;
+            const defaultTimelineResolution = document.getElementById('timelineResolution').value;
+            
+            // Initialize both visualizations with their respective parameters
+            initChart(defaultPlant, defaultTimeRange, defaultResolution);
+            updateStatusGrid(defaultPlant, defaultTimelineRange, defaultTimelineResolution);
+            
+            // Add event listener for plant selector - affects both charts
             document.getElementById('plantSelect').addEventListener('change', function() {
-                const selectedPlant = this.value;
-                initChart(selectedPlant);
-                filterTable(selectedPlant);
+                updateChart();
+                updateStatusTimeline();
+            });
+            
+            // Add event listeners for time range and resolution - only affects main chart
+            document.getElementById('timeRange').addEventListener('change', function() {
+                updateChart();
+            });
+            
+            document.getElementById('timeResolution').addEventListener('change', function() {
+                updateChart();
+            });
+            
+            // Add event listener for timeline range and resolution - only affects timeline chart
+            document.getElementById('timelineRange').addEventListener('change', function() {
+                updateStatusTimeline();
+            });
+            
+            document.getElementById('timelineResolution').addEventListener('change', function() {
+                updateStatusTimeline();
             });
         });
-    //]]>
     </script>
 </body>
 </html>
