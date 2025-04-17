@@ -1,7 +1,6 @@
 # 🌱 RootRouter
 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/AminAlam/RootRouter/tests.yml?branch=main)
-![License](https://img.shields.io/github/license/AminAlam/RootRouter)
 
 RootRouter is an IoT plant moisture monitoring system that helps you keep your plants healthy by tracking soil moisture levels over time.
 
@@ -55,7 +54,7 @@ RootRouter consists of two main components:
 4. Start the server:
    ```bash
    cd server/src
-   python main.py
+   python3 main.py
    ```
 
 5. Access the dashboard at `http://localhost:8080`
@@ -89,37 +88,6 @@ Run the automated tests with:
 cd server/tests
 pytest
 ```
-
-## 📦 Project Structure
-
-```
-RootRouter/
-├── server/                  # Server-side code
-│   ├── src/                 # Source code
-│   │   ├── main.py          # Flask application
-│   │   └── templates/       # HTML templates
-│   └── tests/               # Server tests
-├── sensor/                  # Arduino sensor code
-│   └── arduino_nano_esp/    # Arduino sketch
-├── docs/                    # Documentation
-│   └── images/              # Screenshots and images
-├── .github/                 # GitHub configuration
-│   └── workflows/           # GitHub Actions workflows
-├── Dockerfile               # Docker configuration
-├── docker-compose.yml       # Docker Compose configuration
-├── .dockerignore            # Docker ignore file
-├── requirements.txt         # Python dependencies
-├── pytest.ini               # Pytest configuration
-└── README.md                # Project documentation
-```
-
-## 🚧 Roadmap
-
-- [ ] Add user authentication
-- [ ] Implement email/SMS alerts for dry plants
-- [ ] Create mobile application
-- [ ] Add support for temperature and light sensors
-- [ ] Implement automatic watering control
 
 ## 🤝 Contributing
 
