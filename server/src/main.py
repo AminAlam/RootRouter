@@ -9,6 +9,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///plants.db'
 db = SQLAlchemy(app)
 
 # Database model
+
+
 class PlantData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     plant_name = db.Column(db.String(100))
@@ -20,6 +22,8 @@ class PlantData(db.Model):
         return f"<PlantData {self.plant_name}>"
 
 # Function to determine moisture status
+
+
 def get_moisture_status(moisture_value):
     if moisture_value > 3000:
         return {"class": "dry", "text": "Dry"}
@@ -31,6 +35,8 @@ def get_moisture_status(moisture_value):
         return {"class": "very-wet", "text": "Very Wet"}
 
 # Function to determine threshold values for status calculations
+
+
 def get_moisture_thresholds():
     return {
         "very_wet": 2100,
@@ -40,6 +46,8 @@ def get_moisture_thresholds():
     }
 
 # Route to receive data from Arduino
+
+
 @app.route('/receive_data', methods=['POST'])
 def receive_data():
     data = request.get_json()
@@ -47,7 +55,7 @@ def receive_data():
         plant_name = data.get('plant_name')
         location = data.get('location')
         moisture_value = data.get('moisture_value')
-        
+
         if plant_name and location and moisture_value:
             new_entry = PlantData(
                 plant_name=plant_name,
@@ -63,23 +71,25 @@ def receive_data():
         return 'No JSON data received', 400
 
 # Route to display data
+
+
 @app.route('/')
 def index():
     # Check if time_range parameter is provided
     time_range = request.args.get('time_range', 'all')
-    
+
     # By default, get all data ordered by timestamp
     query = PlantData.query
-    
+
     # If time_range is specified and not 'all', filter by date
     if time_range != 'all' and time_range.isdigit():
         days = int(time_range)
         cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=days)
         query = query.filter(PlantData.timestamp >= cutoff_date)
-    
+
     # Get data ordered by timestamp
     plant_data_raw = query.order_by(PlantData.timestamp.desc()).all()
-    
+
     # Add moisture status to each data point
     plant_data = []
     for data in plant_data_raw:
@@ -92,8 +102,9 @@ def index():
             'moisture_status': get_moisture_status(data.moisture_value)
         }
         plant_data.append(data_dict)
-    
+
     return render_template('index.html', plant_data=plant_data)
+
 
 if __name__ == '__main__':
     # Create database tables within an application context
@@ -102,6 +113,7 @@ if __name__ == '__main__':
     # Run app with SSL context (use your own cert.pem and key.pem files)
     # app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'))
     app.run(host='0.0.0.0', port=8080)
+
 
 def run():
     """Entry point for the application script"""
